@@ -20,11 +20,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
 
+        // build a pretty list of current participants
+        const participantItems = details.participants
+          .map(p => `
+            <li>
+              ${p}
+              <span class="remove-participant" data-activity="${name}" data-email="${p}">&times;</span>
+            </li>`)
+          .join("");
+
         activityCard.innerHTML = `
           <h4>${name}</h4>
           <p>${details.description}</p>
           <p><strong>Schedule:</strong> ${details.schedule}</p>
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+          <div class="participants">
+            <strong>Participants:</strong>
+            <ul>${participantItems}</ul>
+          </div>
         `;
 
         activitiesList.appendChild(activityCard);
@@ -62,6 +75,8 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        // refresh activity list so new participant appears
+        fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
@@ -78,6 +93,28 @@ document.addEventListener("DOMContentLoaded", () => {
       messageDiv.className = "error";
       messageDiv.classList.remove("hidden");
       console.error("Error signing up:", error);
+    }
+  });
+
+  // delegate clicks for remove icons
+  activitiesList.addEventListener("click", async (ev) => {
+    const target = ev.target;
+    if (target.classList.contains("remove-participant")) {
+      const activity = target.dataset.activity;
+      const email = target.dataset.email;
+      try {
+        const res = await fetch(
+          `/activities/${encodeURIComponent(activity)}/participants?email=${encodeURIComponent(email)}`,
+          { method: "DELETE" }
+        );
+        if (res.ok) {
+          fetchActivities();
+        } else {
+          console.error("Failed to remove", await res.text());
+        }
+      } catch (err) {
+        console.error("Error removing participant", err);
+      }
     }
   });
 
